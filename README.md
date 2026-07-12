@@ -5,6 +5,9 @@ from ray tracing, empirical, and stochastic approaches to assess how decisions m
 the percentage of end-devices covered and the reliability of the communication system. Our results show that GW placement based on site-independent channels can overestimate the number
 of gateways required to meet the network requirements, whereas using site-specific channels allows us to satisfy the same requirements with fewer GWs.
  
+## 3D scenario
+The 3D scenario files used in this work can be accessed by this [link](https://nextcloud.lasseufpa.org/s/Dr8YHbfiY6Y48pi). In this folder, there is files that can be manipulated using Blender software.
+
 ## Compiling ns-3 LoRaWAN
 The first step to use our framework, is compiling the ns-3 LoRaWAN module. You can follow the steps defined in this [link](https://github.com/signetlabdei/lorawan) to do this. 
 
