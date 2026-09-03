@@ -75,3 +75,18 @@ In this case, the power threshold interval consider a minimum power of -150 dBm 
 `plot_tradeoff.py`: Script to generate a scatter plot for depicting the relationship between the MSE of received power (considering WI received power as ground truth) and the simulation time.
 
 `plot_receiver_power.py`: Script to plot the CDF of received power of all end-devices across different channel models.
+
+## Credits
+If you benefit from this work, please cite on your publications using:
+
+```
+@misc{modesto2026,
+      title={Ray Tracing-Based LoRaWAN Gateway Placement for Reliable Connectivity in Amazonian Regions}, 
+      author={Cláudio Modesto and Lucas Mozart and Cleverson Nahum and Bruno Castro and Aldebaro Klautau},
+      year={2026},
+      eprint={2608.30890},
+      archivePrefix={arXiv},
+      primaryClass={cs.NI},
+      url={https://arxiv.org/abs/2608.30890}, 
+}
+```
