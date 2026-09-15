@@ -30,7 +30,7 @@ if you would like to gneerate 10 realization across all available spreading fact
 
 ```bash
 for j in {7..12}; do for i in {1..10}; do ./ns3 run scratch/lorawan_general_energy_simulation.cc -- --channelType=log --spreadingFactor=$j --scenario=forest --seed=43 --run=$i; done; done
-``
+```
 
 The available flags are:
 - `--spreadingFactor`: The number of spreading factor, vary between [7, 12].
