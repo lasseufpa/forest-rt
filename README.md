@@ -26,6 +26,12 @@ To generate stochastic or empirical channel models, you should move the source c
 ./ns3 run scratch/lorawan_general_energy_simulation.cc -- --spreadingFactor=7 --channelType=cost --scenario=forest
 ```
 
+if you would like to gneerate 10 realization across all available spreading factors (7-12), you can use the following command, in this case for log-distance propagation model:
+
+```bash
+for j in {7..12}; do for i in {1..10}; do ./ns3 run scratch/lorawan_general_energy_simulation.cc -- --channelType=log --spreadingFactor=$j --scenario=forest --seed=43 --run=$i; done; done
+``
+
 The available flags are:
 - `--spreadingFactor`: The number of spreading factor, vary between [7, 12].
 - `--channelType`: Type of channel to used. The options are log-distance, Okumura-Hata, COST-231, Nakagami, two ray, 3gpp-UMa, WI (x3D), WI (Full 3D), Sionna. To use one of these channel you should use the following options: `log`, `okumura`, `cost`, `nakagami` `twoRay`, `threegpp`, `rural`, `wix`, `wif`, `sionna`.
@@ -50,6 +56,7 @@ If you would like to perform an optimization using an interval of power threshol
 ```python
 python3 multi_rho_gateway_positions -c cost --max-rho -80 --min-rho -150
 ```
+
 
 In this case, the power threshold interval consider a minimum power of -150 dBm and maximum power of -80, with a COST-231 channel. Furthermore, the following flags can use to change the behavior of the optimization:
 
