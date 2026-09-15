@@ -1,14 +1,17 @@
+"""
+Script for sensitivity analysis
+for different values of received power
+"""
+
 import os
+import re
 import glob
+import math
 import pathlib
 import pandas as pd
 import numpy as np
-import re
 import networkx as nx
-import matplotlib.pyplot as plt
-import math
 from pyomo.environ import *
-from matplotlib import pyplot as plt
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -135,10 +138,10 @@ path_gain_db = _get_path_gain(path_gain_type)
 all_pdr = _get_pdr(path_gain_type)
 PATH_GAIN_COLUMN = -1
 
-G_index = list(range(G))       # 0..G-1
+g_index = list(range(G))
 Nd = len(end_devices_cells)
 if args.scenario == "etoile":
-    D_index = [1, 2, 4, 9, 10, 12, 14, 18,
+    d_index = [1, 2, 4, 9, 10, 12, 14, 18,
                 19, 20, 22, 23, 26, 27, 28,
                 30, 31, 32, 33, 34, 35, 36,
                 40, 41, 42, 43, 44, 50, 51,
@@ -147,7 +150,7 @@ if args.scenario == "etoile":
                 72, 73, 74, 75, 81, 82, 83,
                 86, 87, 91, 98]
 elif args.scenario == "canyon":
-    D_index = [3, 4, 8, 9, 16, 17, 21, 22, 29,
+    d_index = [3, 4, 8, 9, 16, 17, 21, 22, 29,
                30, 34, 35, 39, 40, 41, 42, 43,
                44, 45, 46, 47, 48, 49, 50, 51,
                52, 53, 54, 55, 56, 57, 58, 59,
@@ -155,7 +158,7 @@ elif args.scenario == "canyon":
                74, 81, 82, 86, 87, 94, 95, 99,
                100]
 elif args.scenario == "forest":
-    D_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    d_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                11, 12, 13, 14, 15, 16, 17, 18, 19,
                20, 21, 22, 23, 24, 25, 26, 27, 28,
                30, 31, 32, 34, 35, 36, 37, 38, 39, 41]
@@ -190,8 +193,8 @@ for threshold in rho:
     print(f"Current threshold: {threshold}")
     # Defining an cover dict 
     cover = {}
-    for d in D_index:
-        for p_gateway in G_index:
+    for d in d_index:
+        for p_gateway in g_index:
             # This indicates whether the power threshold is being reached in each
             # end-device for each gateway -> simplification to 0 or 1
             if (d, p_gateway) in rx_power:
@@ -201,23 +204,23 @@ for threshold in rho:
 
     all_pdr_dict = {}
     for i, sf in enumerate(SF_values):
-        for p_gateway in G_index:
+        for p_gateway in g_index:
             all_pdr_dict[(sf, p_gateway)] = all_pdr[i, p_gateway]
 
     pdr_cover = {}
     for i, sf in enumerate(SF_values):
-        for p_gateway in G_index:
+        for p_gateway in g_index:
             pdr_cover[(sf, p_gateway)] = 1 if all_pdr_dict[(sf, p_gateway)] >= 0.7 else 0
 
     # Optimization
     model = ConcreteModel()
-    model.P = Set(initialize=G_index)  # all gateways positions = all positions
-    model.D = Set(initialize=D_index)
+    model.P = Set(initialize=g_index)  # all gateways positions = all positions
+    model.D = Set(initialize=d_index)
     model.SF = Set(initialize=[7, 8, 9, 10, 11, 12])
     model.pdr_cover = Param(model.SF, model.P, initialize=pdr_cover, within=Binary)
     model.cover = Param(model.D, model.P, initialize=cover, within=Binary, default=0)
     model.x = Var(model.P, domain=Binary)
-    model.y = Var(model.D, domain=Binary)  # device d is covered
+    model.y = Var(model.D, domain=Binary)
     model.a = Var(model.D, model.P, domain=Binary)
     model.sf_selected = Var(model.SF, model.P, domain=Binary)
 
@@ -265,18 +268,16 @@ for threshold in rho:
         for p in chosen_gateways:
             print(f"  p = {p}, coords = {coordinates[p]}")
 
-        received_power = np.zeros(len(G_index))
-        for d in D_index:
+        received_power = np.zeros(len(g_index))
+        for d in d_index:
             total_mW = 0.0
-            for p in G_index:
+            for p in g_index:
                 if (d, p) not in rx_power:
                     continue
                 if value(model.x[p]) > 0.5:   # chosen gateway
                     rp_dbm = rx_power[(d, p)]
-                    
                     # converting dBm -> mW
                     rp_mw = 10**(rp_dbm / 10.0)
-                    
                     total_mW += rp_mw
             # avoiding problem with log(0)
             if total_mW > 0:
@@ -290,8 +291,8 @@ for threshold in rho:
         dev_y = devices_df[1].values
 
         # gateways positions
-        xs_gate = [coordinates[p][0] for p in G_index]
-        ys_gate = [coordinates[p][1] for p in G_index]
+        xs_gate = [coordinates[p][0] for p in g_index]
+        ys_gate = [coordinates[p][1] for p in g_index]
 
         # chosen gateways positions
         xs_chosen = [coordinates[p][0] for p in chosen_gateways]

@@ -15,11 +15,11 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument(
     "--channel-type", "-c", help="Type of channel",
-    type=str, required=False, default="sionna"
+    type=str, required=True
 )
 
 parser.add_argument(
-    "--threshold", "-t", help="Received power threshold",
+    "--rho", "-t", help="Received power threshold",
     type=float, required=False, default=-110
 )
 
@@ -29,8 +29,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--gamma", "-g", help="Minimum PDR",
+    type=float, required=False, default=0.8
+)
+
+parser.add_argument(
     "--scenario", "-s", help="3D scenario/grid to be used",
-    type=str, required=False, default="etoile"
+    type=str, required=True
 )
 
 args = parser.parse_args()
@@ -57,7 +62,7 @@ def _get_pdr(path_gain_type: str):
             df = pd.read_csv(f"{fname}", header=None)
             pdr_per_sf.append(np.mean(df))
         all_pdr.append(pdr_per_sf)
-    
+
     return np.array(all_pdr)
 
 def _get_path_gain(path_gain_type: str):
@@ -93,11 +98,9 @@ def _get_path_gain(path_gain_type: str):
 
 # Defining the numpy seed
 np.random.seed(42)
-
 # read CSV
 devices_df = pd.read_csv(f"path_gain_results/{args.scenario}_coordinates.csv",
                                             header=None)
-
 # end_device positions -> cell indexes
 end_devices_cells = list(zip(devices_df[3], devices_df[4]))
 
@@ -113,10 +116,9 @@ rx_power = {}
 path_gain_type = args.channel_type
 path_gain_db = _get_path_gain(path_gain_type)
 all_pdr = _get_pdr(path_gain_type)
-
 PATH_GAIN_COLUMN = -1
 
-G_index = list(range(G))
+g_index = list(range(G))
 Nd = len(end_devices_cells)
 if args.scenario == "etoile":
     D_index = [1, 2, 4, 9, 10, 12, 14, 18,
@@ -141,7 +143,6 @@ elif args.scenario == "forest":
                20, 21, 22, 23, 24, 25, 26, 27, 28,
                30, 31, 32, 34, 35, 36, 37, 38, 39, 41]
 
-invalid_d_index = np.zeros(100)
 print("Number of ED: ", len(D_index))
 
 for p_gateway in range(G): # Power that a ED receivers from each gateway in all positions available
@@ -156,10 +157,10 @@ for key, v in list(rx_power.items()):
     if v is None or math.isnan(v) or math.isinf(v):
         rx_power[key] = NO_SIGNAL # NO_SIGNAL replaces -inf values
 
-if args.threshold is None:
+if args.rho is None:
     rho = min([x for x in rx_power.values() if x != -1000]) + 20 # threshold in dBm
 else:
-    rho = args.threshold
+    rho = args.rho
 print("List of power thresholds: ", rho)
 
 all_received_power = []
@@ -170,7 +171,7 @@ all_xs_chosen, all_ys_chosen = [], []
 cover = {}
 
 for d in D_index:
-    for p_gateway in G_index:
+    for p_gateway in g_index:
         # This indicates whether the power threshold is being reached in each
         # end-device for each gateway -> simplification to 0 or 1
         if (d, p_gateway) in rx_power:
@@ -180,21 +181,21 @@ SF_values = [7, 8, 9, 10, 11, 12]
 
 all_pdr_dict = {}
 for i, sf in enumerate(SF_values):
-    for p_gateway in G_index:
+    for p_gateway in g_index:
         all_pdr_dict[(sf, p_gateway)] = all_pdr[i, p_gateway]
 
 pdr_cover = {}
 for i, sf in enumerate(SF_values):
-    for p_gateway in G_index:
-        pdr_cover[(sf, p_gateway)] = 1 if all_pdr_dict[(sf, p_gateway)] >= 0.7 else 0
+    for p_gateway in g_index:
+        pdr_cover[(sf, p_gateway)] = 1 if all_pdr_dict[(sf, p_gateway)] >= args.gamma else 0
 
 # Optimization
 model = ConcreteModel()
-model.P = Set(initialize=G_index)  # all gateways positions = all positions
+model.P = Set(initialize=g_index)  # all gateways positions = all positions
 model.D = Set(initialize=D_index)
 model.SF = Set(initialize=[7, 8, 9, 10, 11, 12])
 model.pdr_cover = Param(model.SF, model.P, initialize=pdr_cover, within=Binary)
-model.cover = Param(model.D, model.P, initialize=cover, within=Binary, default=0)
+model.cover = Param(model.D, model.P, initialize=cover, within=Binary)
 model.x = Var(model.P, domain=Binary)
 model.y = Var(model.D, domain=Binary)  # device d is covered
 model.a = Var(model.D, model.P, domain=Binary)
@@ -234,7 +235,7 @@ model.obj = Objective(rule=obj_rule, sense=minimize)
 solver = SolverFactory("glpk")
 result = solver.solve(model) #, tee=True)
 
-received_power = np.zeros(len(G_index))
+received_power = np.zeros(len(g_index))
 if (result.solver.status == SolverStatus.ok and
         result.solver.termination_condition == TerminationCondition.optimal):
     # Chosen gateways
@@ -268,7 +269,7 @@ if (result.solver.status == SolverStatus.ok and
 
     for d in D_index:
         total_mW = 0.0
-        for p in G_index:
+        for p in g_index:
             if (d, p) not in rx_power:
                 continue
             if value(model.x[p]) > 0.5:   # chosen gateway
@@ -288,8 +289,8 @@ if (result.solver.status == SolverStatus.ok and
     dev_y = devices_df[1].values
 
     # gateways positions
-    xs_gate = [coordinates[p][0] for p in G_index]
-    ys_gate = [coordinates[p][1] for p in G_index]
+    xs_gate = [coordinates[p][0] for p in g_index]
+    ys_gate = [coordinates[p][1] for p in g_index]
 
     # end devices positions
 
