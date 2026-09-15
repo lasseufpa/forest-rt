@@ -33,7 +33,7 @@ plt.ylabel("EDs covered (%)", fontsize=14)
 plt.yticks(fontsize=12)
 
 plt.subplot(2, 1, 2)
-for i in range(len(scenarios)):
+for i, _ in enumerate(scenarios):
     fancy_title = "Forest"
     all_pdr = []
     chosen_gateways = []
@@ -51,7 +51,7 @@ for i in range(len(scenarios)):
     realizations = 10
     avg_all_pdr = []
     std_all_pdr = []
-    for channel in range(len(all_pdr)):
+    for i, channel in range(len(all_pdr)):
         pdr_w_collision = []
         for realization in range(realizations):
             sum_pdr_lossless = 0
@@ -72,6 +72,4 @@ print(std_all_pdr)
 print(labels)
 plt.xlabel("Channel models", fontsize=14)
 plt.ylabel("Average PDR (%)", fontsize=14)
-
-
-plt.savefig(f"figures/pdr_ed_covered_forest.pdf", bbox_inches="tight")
+plt.savefig("figures/pdr_ed_covered_forest.pdf", bbox_inches="tight")

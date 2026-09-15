@@ -59,7 +59,7 @@ elif args.scenario == "canyon":
     legend_position = (0.48, -0.33)
 elif args.scenario == "forest":
     fancy_title = "Amazon"
-    legend_position = (0.48, -0.23)
+    legend_position = (0.48, -0.33)
 elif args.scenario == "grid1":
     fancy_title = "grid 1"
     legend_position = ((0.48, -0.23))
