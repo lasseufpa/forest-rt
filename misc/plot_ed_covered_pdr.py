@@ -3,6 +3,20 @@ import pathlib
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.stats import t
+
+def confidence_interval(mean, std, n, confidence=0.95):
+    """
+    Function to calculate confidence interval
+    """
+    alpha = 1 - confidence
+    t_critical = t.ppf(1 - alpha/2, df=n-1)
+    margin = t_critical * std / np.sqrt(n)
+    lower = mean - margin
+    upper = mean + margin
+
+    return [lower, upper, margin]
+
 
 ROOT_DIR = "figures" # path to root database directory
 # Create the output directory
@@ -51,7 +65,7 @@ for i, _ in enumerate(scenarios):
     realizations = 10
     avg_all_pdr = []
     std_all_pdr = []
-    for i, channel in range(len(all_pdr)):
+    for channel in range(len(all_pdr)):
         pdr_w_collision = []
         for realization in range(realizations):
             sum_pdr_lossless = 0
@@ -62,7 +76,7 @@ for i, _ in enumerate(scenarios):
         avg_all_pdr.append(np.mean(pdr_w_collision))
         std_all_pdr.append(np.std(pdr_w_collision))
     print(f"{scenarios[i]}: {avg_all_pdr}")
-    plt.title(rf"Average PDR across all GWs in {fancy_title} ($\gamma$ = 0.7)")
+    plt.title(rf"Average PDR across all GWs in {fancy_title} ($\gamma$ = 0.8)")
     bars = plt.bar(labels, avg_all_pdr, capsize=5, width=0.6, color=colors)
     plt.bar_label(bars, fmt="%0.2f", padding=3, fontweight='bold')
     plt.ylim(0, 115)
@@ -70,6 +84,13 @@ for i, _ in enumerate(scenarios):
     plt.xticks(rotation=45)
 print(std_all_pdr)
 print(labels)
+
+all_ci = []
+for j in range(len(avg_all_pdr)):
+    all_ci.append(confidence_interval(avg_all_pdr[j], std_all_pdr[j], 10))
+
+print(all_ci)
+
 plt.xlabel("Channel models", fontsize=14)
 plt.ylabel("Average PDR (%)", fontsize=14)
 plt.savefig("figures/pdr_ed_covered_forest.pdf", bbox_inches="tight")
