@@ -7,42 +7,46 @@ import os
 import re
 import glob
 import math
+import argparse
 import pathlib
 import pandas as pd
 import numpy as np
-import networkx as nx
 from pyomo.environ import *
-import argparse
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--channel-type", "-c", help="Type of channel", 
+    "--channel-type", "-c", help="Type of channel.", 
     type=str, required=True
 )
 
 parser.add_argument(
-    "--threshold", "-t", help="Threshold in dBm", 
+    "--threshold", "-t", help="Threshold in dBm.", 
     type=float, required=False
 )
 
 parser.add_argument(
-    "--alpha", "-a", help="Minimum percentage of covered ED",
+    "--alpha", "-a", help="Minimum percentage of covered ED.",
     type=float, required=False, default=0.8
 )
 
 parser.add_argument(
-    "--max-rho", "-maxr", help=" Maximum threshold in dBm", 
+    "--gamma", "-g", help="Minimum percentage of PDR.",
+    type=float, required=False, default=0.8
+)
+
+parser.add_argument(
+    "--max-rho", "-maxr", help=" Maximum threshold in dBm.", 
     type=float, required=False
 )
 
 parser.add_argument(
-    "--min-rho", "-minr", help="Minimum threshold in dBm", 
+    "--min-rho", "-minr", help="Minimum threshold in dBm.", 
     type=float, required=False
 )
 
 parser.add_argument(
-    "--scenario", "-s", help="Type of scenario to be used", 
+    "--scenario", "-s", help="Type of scenario to be used.", 
     type=str, required=False
 )
 
@@ -210,7 +214,7 @@ for threshold in rho:
     pdr_cover = {}
     for i, sf in enumerate(SF_values):
         for p_gateway in g_index:
-            pdr_cover[(sf, p_gateway)] = 1 if all_pdr_dict[(sf, p_gateway)] >= 0.7 else 0
+            pdr_cover[(sf, p_gateway)] = 1 if all_pdr_dict[(sf, p_gateway)] >= args.gamma else 0
 
     # Optimization
     model = ConcreteModel()
