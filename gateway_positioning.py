@@ -30,7 +30,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--gamma", "-g", help="Minimum PDR",
-    type=float, required=False, default=0.8
+    type=float, required=False, default=0.7
 )
 
 parser.add_argument(
@@ -219,6 +219,13 @@ def coverage_rule_percentage(m):
 def unique_assignment_rule(m, d):
     return sum(m.a[d, p] for p in m.P) == m.y[d]
 
+def max_gateways_per_sf_rule(m, sf):
+    return sum(
+        m.sf_selected[sf, p]
+        for p in m.P
+    ) <= 4
+
+model.max_gateways_per_sf = Constraint(model.SF, rule=max_gateways_per_sf_rule)
 model.unique_assignment = Constraint(model.D, rule=unique_assignment_rule)
 model.assignment_coverage = Constraint(model.D, model.P, rule=assignment_coverage_rule)
 model.assignment_selected = Constraint(model.D, model.P, rule=assignment_selected_rule)
