@@ -30,7 +30,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--gamma", "-g", help="Minimum PDR",
-    type=float, required=False, default=0.7
+    type=float, required=False, default=0.8
 )
 
 parser.add_argument(
@@ -195,7 +195,7 @@ model.P = Set(initialize=g_index)  # all gateways positions = all positions
 model.D = Set(initialize=D_index)
 model.SF = Set(initialize=[7, 8, 9, 10, 11, 12])
 model.pdr_cover = Param(model.SF, model.P, initialize=pdr_cover, within=Binary)
-model.cover = Param(model.D, model.P, initialize=cover, within=Binary)
+model.cover = Param(model.D, model.P, initialize=cover, within=Binary, default=0)
 model.x = Var(model.P, domain=Binary)
 model.y = Var(model.D, domain=Binary)  # device d is covered
 model.a = Var(model.D, model.P, domain=Binary)

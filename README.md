@@ -42,7 +42,7 @@ The available flags are:
 In order to perform a gateway placement optimization, with a fixed threshold you can use the following command:
 
 ```python
-python3 gateway_positioning -c okumura -t -120
+python3 gateway_positioning.py -c okumura -t -120
 ```
 
 In this case, an optimization process will running with a scenario with Okumura-Hata channel and a power threshold of -120 dBm. Furthermore, the following flags can use to change the behavior of the optimization:
@@ -54,7 +54,7 @@ In this case, an optimization process will running with a scenario with Okumura-
 If you would like to perform an optimization using an interval of power threshold, you can use the following command:
 
 ```python
-python3 multi_rho_gateway_positions -c cost --max-rho -80 --min-rho -150
+python3 multi_rho_gateway_positioning.py -c cost --max-rho -65 --min-rho -110
 ```
 
 
