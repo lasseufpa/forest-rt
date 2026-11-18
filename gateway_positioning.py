@@ -77,6 +77,8 @@ def _get_path_gain(path_gain_type: str):
                 continue
             df = pd.read_csv(f"{fname}", header=None)
             path_gain_db.append(df)
+        path_gain_db = np.array(path_gain_db)[:, :, -1]
+
     elif path_gain_type == "wix" or path_gain_type == "wif":
         files = sorted(
             glob.glob(f"path_gain_results/{path_gain_type}/{args.scenario}/*.csv"),
@@ -85,16 +87,24 @@ def _get_path_gain(path_gain_type: str):
         for fname in files:
             df = pd.read_csv(f"{fname}", header=None)
             path_gain_db.append(df)
+        path_gain_db = np.array(path_gain_db)[:, :, -1]
     else:
-        files = sorted(
-            glob.glob(f"path_gain_results/ns3/{path_gain_type}/{args.scenario}/*.csv"),
-            key=lambda x: int(os.path.splitext(os.path.basename(x))[0])
-        )
-        for fname in files:
-            df = pd.read_csv(f"{fname}", header=None)
-            path_gain_db.append(df)
+        realizations = 10
+        path_gain_per_realization = []
+        for realization in range(1, realizations+1):
+            path_gain_per_gw = []
+            files = sorted(
+                glob.glob(f"path_gain_results/ns3/{path_gain_type}/{args.scenario}{realization}/*.csv"),
+                key=lambda x: int(os.path.splitext(os.path.basename(x))[0])
+            )
+            for fname in files:
+                df = pd.read_csv(f"{fname}", header=None)
+                path_gain_per_gw.append(df)
+            path_gain_per_realization.append(path_gain_per_gw)
 
-    return np.array(path_gain_db)
+        path_gain_db = np.mean(np.array(path_gain_per_realization)[:, :, :, -1], axis=0)
+
+    return path_gain_db
 
 # Defining the numpy seed
 np.random.seed(42)
@@ -116,12 +126,11 @@ rx_power = {}
 path_gain_type = args.channel_type
 path_gain_db = _get_path_gain(path_gain_type)
 all_pdr = _get_pdr(path_gain_type)
-PATH_GAIN_COLUMN = -1
 
 g_index = list(range(G))
 Nd = len(end_devices_cells)
 if args.scenario == "etoile":
-    D_index = [1, 2, 4, 9, 10, 12, 14, 18,
+    d_index = [1, 2, 4, 9, 10, 12, 14, 18,
                 19, 20, 22, 23, 26, 27, 28,
                 30, 31, 32, 33, 34, 35, 36,
                 40, 41, 42, 43, 44, 50, 51,
@@ -130,7 +139,7 @@ if args.scenario == "etoile":
                 72, 73, 74, 75, 81, 82, 83,
                 86, 87, 91, 98]
 elif args.scenario == "canyon":
-    D_index = [3, 4, 8, 9, 16, 17, 21, 22, 29,
+    d_index = [3, 4, 8, 9, 16, 17, 21, 22, 29,
                30, 34, 35, 39, 40, 41, 42, 43,
                44, 45, 46, 47, 48, 49, 50, 51,
                52, 53, 54, 55, 56, 57, 58, 59,
@@ -138,18 +147,18 @@ elif args.scenario == "canyon":
                74, 81, 82, 86, 87, 94, 95, 99,
                100]
 elif args.scenario == "forest":
-    D_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    d_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                11, 12, 13, 14, 15, 16, 17, 18, 19,
                20, 21, 22, 23, 24, 25, 26, 27, 28,
                30, 31, 32, 34, 35, 36, 37, 38, 39, 41]
 
-print("Number of ED: ", len(D_index))
+print("Number of ED: ", len(d_index))
 
 for p_gateway in range(G): # Power that a ED receivers from each gateway in all positions available
     for d, (ix, iy) in enumerate(end_devices_cells):
-        rx_power[(d, p_gateway)] = float(path_gain_db[p_gateway][d][PATH_GAIN_COLUMN])
+        rx_power[(d, p_gateway)] = float(path_gain_db[p_gateway][d])
 
-print(D_index)
+print(d_index)
 # Solving -inf problem
 NO_SIGNAL = -1000
 
@@ -170,7 +179,7 @@ all_xs_chosen, all_ys_chosen = [], []
 # Defining an cover dict
 cover = {}
 
-for d in D_index:
+for d in d_index:
     for p_gateway in g_index:
         # This indicates whether the power threshold is being reached in each
         # end-device for each gateway -> simplification to 0 or 1
@@ -191,8 +200,8 @@ for i, sf in enumerate(SF_values):
 
 # Optimization
 model = ConcreteModel()
-model.P = Set(initialize=g_index)  # all gateways positions = all positions
-model.D = Set(initialize=D_index)
+model.P = Set(initialize=g_index)
+model.D = Set(initialize=d_index)
 model.SF = Set(initialize=[7, 8, 9, 10, 11, 12])
 model.pdr_cover = Param(model.SF, model.P, initialize=pdr_cover, within=Binary)
 model.cover = Param(model.D, model.P, initialize=cover, within=Binary, default=0)
@@ -202,10 +211,10 @@ model.a = Var(model.D, model.P, domain=Binary)
 model.sf_selected = Var(model.SF, model.P, domain=Binary)
 
 def sf_valid_rule(m, sf, p):
-    return m.sf_selected[sf,p] <= m.pdr_cover[sf,p]
+    return m.sf_selected[sf, p] <= m.pdr_cover[sf, p]
 
 def one_sf_rule(m, p):
-    return sum(m.sf_selected[sf,p] for sf in m.SF) == m.x[p]
+    return sum(m.sf_selected[sf, p] for sf in m.SF) == m.x[p]
 
 def assignment_selected_rule(m, d, p):
     return m.a[d, p] <= m.x[p]
@@ -223,15 +232,15 @@ def max_gateways_per_sf_rule(m, sf):
     return sum(
         m.sf_selected[sf, p]
         for p in m.P
-    ) <= 4
+    ) <= 8
 
-model.max_gateways_per_sf = Constraint(model.SF, rule=max_gateways_per_sf_rule)
-model.unique_assignment = Constraint(model.D, rule=unique_assignment_rule)
-model.assignment_coverage = Constraint(model.D, model.P, rule=assignment_coverage_rule)
-model.assignment_selected = Constraint(model.D, model.P, rule=assignment_selected_rule)
-model.one_sf = Constraint(model.P, rule=one_sf_rule)
 model.valid_rule = Constraint(model.SF, model.P, rule=sf_valid_rule)
+model.one_sf = Constraint(model.P, rule=one_sf_rule)
+model.assignment_selected = Constraint(model.D, model.P, rule=assignment_selected_rule)
+model.assignment_coverage = Constraint(model.D, model.P, rule=assignment_coverage_rule)
 model.coverage_percentage = Constraint(rule=coverage_rule_percentage)
+model.unique_assignment = Constraint(model.D, rule=unique_assignment_rule)
+model.max_gateways_per_sf = Constraint(model.SF, rule=max_gateways_per_sf_rule)
 
 def obj_rule(m):
     return sum(m.x[p_gateway] for p_gateway in m.P)
@@ -274,7 +283,7 @@ if (result.solver.status == SolverStatus.ok and
                 if value(model.a[d, p]) == 1:
                     gw_ed_links[f"{p}"].append(d)
 
-    for d in D_index:
+    for d in d_index:
         total_mW = 0.0
         for p in g_index:
             if (d, p) not in rx_power:
@@ -301,8 +310,8 @@ if (result.solver.status == SolverStatus.ok and
 
     # end devices positions
 
-    xs_ed = [coordinates[p][0] for p in D_index]
-    ys_ed = [coordinates[p][1] for p in D_index]
+    xs_ed = [coordinates[p][0] for p in d_index]
+    ys_ed = [coordinates[p][1] for p in d_index]
 
     # chosen gateways positions
     xs_chosen = [coordinates[p][0] for p in chosen_gateways]
@@ -315,7 +324,7 @@ if (result.solver.status == SolverStatus.ok and
                                             np.array(chosen_sf))
     # saving number of covered end-devices
     np.savez(f"{OUTPUT_PATH_NAME}/covered_{path_gain_type}.npz",
-                                            np.array([len(D_index), len(ed_covered)]))
+                                            np.array([len(d_index), len(ed_covered)]))
     # saving receiver power for each end-device
     np.savez(f"{OUTPUT_PATH_NAME}/receiver_power_{path_gain_type}.npz", received_power)
     # saving all position coordinates
